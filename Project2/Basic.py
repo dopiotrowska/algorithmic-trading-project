@@ -125,16 +125,15 @@ def run_backtest(symbol, start_date, end_date, short_period, long_period, stop_l
     final_portfolio_value = cerebro.broker.getvalue()
     return_percentage = ((final_portfolio_value - initial_portfolio_value) / initial_portfolio_value) * 100
 
-
-
-
     # Print the final portfolio value and performance metrics
     print(f"Initial Portfolio Value: {initial_portfolio_value}")
     print(f"Ending Portfolio Value: {final_portfolio_value:.2f}")
+    print('')
     print(f"Return in %: {return_percentage:.2f}%")
-    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
     print(f"Max Drawdown: {drawdown.max.drawdown:.2f}%")
-    print(f"Max Drawdown Duration: {drawdown.max.len} days")
+    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    # print(f"Max Drawdown Duration: {drawdown.max.len} days")
+    print('')
 
     # Plot the results
     cerebro.plot()
@@ -155,7 +154,7 @@ run_backtest(
     take_profit=0,      # 5% take profit, 0.05
     trailing_stop=0.1,     # 2% trailing stop, 0.02
     initial_capital=100000,
-    slippage= 0,  #0.001,
-    commission=0,  #0.001 - bossa 0.38%
-    percents=20 # percent of capital
+    slippage= 0.002,  #0.001,
+    commission=0.004,  #0.001 - bossa 0.38%
+    percents=10 # percent of capital
 )
