@@ -16,12 +16,8 @@ class TrendFollowing(bt.Strategy):
 
         # To track the entry price of the trade
         self.entry_price = None
-        self.order = None
 
     def next(self):
-        if self.order:
-            return
-
         # Ensure enough data is available (check for ATR initialization)
         if len(self.data) < 30:
             return
@@ -33,7 +29,7 @@ class TrendFollowing(bt.Strategy):
                 self.rsi[0] > 50 and 
                 self.atr[0] > self.atr_rolling_mean[0] and 
                 not self.position):
-                self.order = self.buy()
+                self.buy()  # Place a buy order
                 self.entry_price = self.data.close[0]  # Record the entry price
 
             # Sell signal: MACD bearish, RSI < 50, and ATR is high
@@ -41,7 +37,7 @@ class TrendFollowing(bt.Strategy):
                   self.rsi[0] < 50 and 
                   self.atr[0] > self.atr_rolling_mean[0] and 
                   self.position):
-                self.order = self.sell()
+                self.sell()  # Place a sell order
 
         # Implement stop loss
         if self.position and self.stop_loss:
@@ -78,10 +74,6 @@ class TrendFollowing(bt.Strategy):
                     print(
                         f"Trailing Stop triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                     self.close()  # Close the position
-
-    def notify_order(self, order):
-        if order.status in [order.Completed, order.Canceled, order.Margin]:
-            self.order = None
 
 # Method to run the backtest with custom parameters
 def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
