@@ -3,38 +3,40 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import yfinance as yf
 import datetime
+import pandas as pd
 
 
-class TrendFollowingWithRF(bt.Strategy):
+class TrendReversalWithVIX(bt.Strategy):
     def __init__(self, macd_fast_period=12, macd_slow_period=26, macd_signal_period=9,
-                 rsi_period=14, atr_period=14, stop_loss=0.02, take_profit=0.05,
+                 rsi_period=14, vix_window=20, stop_loss=0.02, take_profit=0.05,
                  trailing_stop=0.02, signal_window=25, prediction_window=10):
         # Initialize parameters
         self.macd_fast_period = macd_fast_period
         self.macd_slow_period = macd_slow_period
         self.macd_signal_period = macd_signal_period
         self.rsi_period = rsi_period
-        self.atr_period = atr_period
+        self.vix_window = vix_window
         self.stop_loss = stop_loss
         self.take_profit = take_profit
         self.trailing_stop = trailing_stop
         self.signal_window = signal_window
         self.prediction_window = prediction_window
 
-        # Indicators (MACD, RSI, ATR, ATR rolling mean)
-        self.macd = bt.indicators.MACD(self.data.close, 
+        # Indicators for main asset
+        self.macd = bt.indicators.MACD(self.data.close,
                                        period_me1=self.macd_fast_period,
-                                       period_me2=self.macd_slow_period, 
+                                       period_me2=self.macd_slow_period,
                                        period_signal=self.macd_signal_period)
         self.rsi = bt.indicators.RSI(self.data.close, period=self.rsi_period)
-        self.atr = bt.indicators.AverageTrueRange(self.data, period=self.atr_period)
-        self.atr_rolling_mean = bt.indicators.SimpleMovingAverage(self.atr, period=30)
+
+        # VIX rolling mean
+        self.vix_rolling_mean = bt.indicators.SimpleMovingAverage(self.datas[1].close, period=self.vix_window)
 
         # Random Forest Model
         self.rf_model = RandomForestClassifier(
-            n_estimators=200, 
-            max_depth=15, 
-            min_samples_leaf=3, 
+            n_estimators=200,
+            max_depth=15,
+            min_samples_leaf=3,
             random_state=42
         )
 
@@ -47,7 +49,7 @@ class TrendFollowingWithRF(bt.Strategy):
 
     def next(self):
         # Ensure enough data for indicators
-        if len(self.data) < max(self.atr_period, self.prediction_window):
+        if len(self.data) < max(self.rsi_period, self.prediction_window, self.vix_window):
             return
 
         # Current index or position in the data array
@@ -59,25 +61,24 @@ class TrendFollowingWithRF(bt.Strategy):
             print("Not enough data left to make a prediction")
             return
 
-        # Generate Binary Signals (Based on Indicators)
-        macd_signal = 1 if self.macd.macd[0] > self.macd.signal[0] else -1 if self.macd.macd[0] < self.macd.signal[0] else 0
-        rsi_signal = 1 if self.rsi[0] > 55 else -1 if self.rsi[0] < 45 else 0
-        atr_signal = 1 if self.atr[0] > self.atr_rolling_mean[0] else 0
+        # Generate signals based on indicators
+        macd_divergence_buy = (self.macd.macd[0] > self.macd.macd[-1]) and (self.data.close[0] < self.data.close[-1])
+        macd_divergence_sell = (self.macd.macd[0] < self.macd.macd[-1]) and (self.data.close[0] > self.data.close[-1])
 
-        # Combine Signals for Prediction
-        signal_values = [macd_signal, rsi_signal, atr_signal]
+        rsi_signal = 1 if self.rsi[0] < 30 else -1 if self.rsi[0] > 70 else 0
+        vix_signal = 1 if self.datas[1].close[0] > self.vix_rolling_mean[0] else -1 if self.datas[1].close[0] < self.vix_rolling_mean[0] else 0
+
+        # Combine signals for Random Forest input
+        buy_signal = 1 if rsi_signal == 1 and macd_divergence_buy and vix_signal == 1 else 0
+        sell_signal = 1 if rsi_signal == -1 and macd_divergence_sell and vix_signal == -1 else 0
+        signal_values = [rsi_signal, vix_signal, macd_divergence_buy, macd_divergence_sell]
         self.features.append(signal_values)
 
-        # Generate Target
+        # Generate target based on future price movement
         pct_change = (self.data.close[self.prediction_window] - self.data.close[0]) / self.data.close[0]
-        if pct_change > 0.05:
-            self.target.append(1)  # Buy signal
-        elif pct_change < -0.05:
-            self.target.append(-1)  # Sell signal
-        else:
-            self.target.append(0)  # No signal
+        self.target.append(1 if pct_change > 0.02 else -1 if pct_change < -0.02 else 0)
 
-        # Train the Random Forest Model
+        # Train Random Forest and make predictions
         if len(self.features) >= self.signal_window:
             X = np.array(self.features[-self.signal_window:])
             y = np.array(self.target[-self.signal_window:])
@@ -85,20 +86,13 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.rf_model.fit(X, y)
                 prediction = self.rf_model.predict([signal_values])[0]
 
-
                 # Act based on the prediction
                 if prediction == 1 and not self.position:
                     self.buy_signal()
                 elif prediction == -1 and not self.position:
                     self.sell_signal()
-                elif prediction == 1 and self.position.size < 0:
-                    self.close()
-                    self.buy_signal()
-                elif prediction == -1 and self.position.size > 0:
-                    self.close()
-                    self.sell_signal()
 
-                    # Check stop-loss
+        # Manage open positions
         if self.position:
             self.check_stop_loss()
 
@@ -120,7 +114,6 @@ class TrendFollowingWithRF(bt.Strategy):
                 print(f"Stop Loss triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.close()
 
-
         if self.take_profit != 0:
             take_profit_price = self.entry_price * (1 + self.take_profit if self.position.size > 0 else 1 - self.take_profit)
             if (self.position.size > 0 and self.data.close[0] > take_profit_price) or \
@@ -128,7 +121,6 @@ class TrendFollowingWithRF(bt.Strategy):
                 print(f"Take Profit triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.close()
 
-        # Trailing Stop
         if self.trailing_stop != 0:
             trailing_stop_price = self.entry_price * (1 - self.trailing_stop if self.position.size > 0 else 1 + self.trailing_stop)
             if (self.position.size > 0 and self.data.close[0] < trailing_stop_price) or \
@@ -137,22 +129,34 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.close()
 
 
-def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
+
+
+def run_backtest(symbol, vix_symbol, start_date, end_date, stop_loss, take_profit, trailing_stop,
+                 initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
     # Create Cerebro engine
     cerebro = bt.Cerebro()
 
-    # Fetch data from Yahoo Finance using yfinance
-    data = yf.download(symbol, start=start_date, end=end_date)
+    # Fetch data for the main symbol (e.g., S&P 500 or AAPL)
+    asset_data = yf.download(symbol, start=start_date, end=end_date)
+    if asset_data.empty:
+        raise ValueError(f"No data found for symbol: {symbol}")
 
-    # Save data to a CSV file (optional)
-    csv_filename = f"{symbol}_data.csv"
-    data.to_csv(csv_filename)
+    # Fetch VIX data
+    vix_data = yf.download(vix_symbol, start=start_date, end=end_date)
+    if vix_data.empty:
+        raise ValueError(f"No data found for VIX symbol: {vix_symbol}")
 
-    # Load the CSV file into Backtrader
-    data_feed = bt.feeds.PandasData(dataname=data)
+    # Align both datasets by date
+    combined_data = pd.merge(asset_data, vix_data[['Adj Close']], left_index=True, right_index=True, suffixes=('', '_VIX'))
+    combined_data.rename(columns={'Adj Close_VIX': 'VIX'}, inplace=True)
 
-    # Add the data to the Cerebro engine
-    cerebro.adddata(data_feed)
+    # Add main asset data feed
+    asset_data_feed = bt.feeds.PandasData(dataname=asset_data)
+    cerebro.adddata(asset_data_feed, name="Main Asset")
+
+    # Add VIX data feed
+    vix_data_feed = bt.feeds.PandasData(dataname=vix_data)
+    cerebro.adddata(vix_data_feed, name="VIX")
 
     # Set initial capital
     cerebro.broker.set_cash(initial_capital)
@@ -169,7 +173,7 @@ def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_
 
     # Add the strategy to the Cerebro engine, passing the parameters
     cerebro.addstrategy(
-        TrendFollowingWithRF,
+        TrendReversalWithVIX,
         stop_loss=stop_loss,
         take_profit=take_profit,
         trailing_stop=trailing_stop
@@ -201,12 +205,14 @@ def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_
     cerebro.plot()
 
 # Example usage
-symbol = "AAPL"  
-start_date = "2010-01-01"
-end_date = "2019-01-01"
+symbol = "AAPL"  # Main asset symbol (e.g., S&P 500)
+vix_symbol = "^VIX"  # VIX index symbol
+start_date = "2022-01-01"
+end_date = datetime.datetime.today().strftime('%Y-%m-%d')
 
 run_backtest(
     symbol=symbol,
+    vix_symbol=vix_symbol,
     start_date=start_date,
     end_date=end_date,
     stop_loss=0.02,
@@ -217,3 +223,4 @@ run_backtest(
     commission=0.004,  # 0.4% commission
     percents=10  # Max 10% of capital per trade
 )
+
