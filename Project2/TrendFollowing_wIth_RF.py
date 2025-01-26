@@ -141,21 +141,31 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit,
     # Create Cerebro engine
     cerebro = bt.Cerebro()
 
-    # Fetch data from Yahoo Finance using yfinance
-    data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+    try:
+        # Fetch data from Yahoo Finance using yfinance
+        data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
 
-    # Print the number of observations in the dataset
-    print(f"Number of observations in the dataset: {len(data)}")
+        # Check if data is empty
+        if data.empty:
+            print(f"No data downloaded for {symbol} from {start_date} to {end_date} with interval {interval}")
+            return
 
-    # Save data to a CSV file (optional)
-    csv_filename = f"{symbol}_data.csv"
-    data.to_csv(csv_filename)
+        # Print the number of observations in the dataset
+        print(f"Number of observations in the dataset: {len(data)}")
 
-    # Load the CSV file into Backtrader
-    data_feed = bt.feeds.PandasData(dataname=data)
+        # Save data to a CSV file (optional)
+        csv_filename = f"{symbol}_data.csv"
+        data.to_csv(csv_filename)
 
-    # Add the data to the Cerebro engine
-    cerebro.adddata(data_feed)
+        # Load the CSV file into Backtrader
+        data_feed = bt.feeds.PandasData(dataname=data)
+
+        # Add the data to the Cerebro engine
+        cerebro.adddata(data_feed)
+
+    except Exception as e:
+        print(f"Error downloading data: {e}")
+        return
 
     # Set initial capital
     cerebro.broker.set_cash(initial_capital)
@@ -208,9 +218,9 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit,
 
 # Example usage
 symbol = "AAPL"  
-start_date = "2024-01-01"
-end_date = "2024-05-15"
-interval = "1h"  # Hourly interval
+start_date = "2025-01-21"
+end_date = "2025-01-23"
+interval = "1m" 
 
 run_backtest(
     symbol=symbol,
