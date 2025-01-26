@@ -137,12 +137,15 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.close()
 
 
-def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
+def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
     # Create Cerebro engine
     cerebro = bt.Cerebro()
 
     # Fetch data from Yahoo Finance using yfinance
-    data = yf.download(symbol, start=start_date, end=end_date)
+    data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+
+    # Print the number of observations in the dataset
+    print(f"Number of observations in the dataset: {len(data)}")
 
     # Save data to a CSV file (optional)
     csv_filename = f"{symbol}_data.csv"
@@ -193,7 +196,10 @@ def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_
     return_percentage = ((final_portfolio_value - initial_capital) / initial_capital) * 100
     print(f"Final Portfolio Value: {final_portfolio_value:.2f}")
     print(f"Return in %: {return_percentage:.2f}%")
-    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    if sharpe_ratio is not None:
+        print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    else:
+        print("Sharpe Ratio: None")
     print(f"Max Drawdown: {drawdown.max.drawdown:.2f}%")
     print()
 
@@ -202,13 +208,15 @@ def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_
 
 # Example usage
 symbol = "AAPL"  
-start_date = "2010-01-01"
-end_date = "2019-01-01"
+start_date = "2024-01-01"
+end_date = "2024-05-15"
+interval = "1h"  # Hourly interval
 
 run_backtest(
     symbol=symbol,
     start_date=start_date,
     end_date=end_date,
+    interval=interval,
     stop_loss=0.02,
     take_profit=0.05,
     trailing_stop=0.02,
