@@ -76,12 +76,12 @@ class TrendFollowing(bt.Strategy):
                     self.close()  # Close the position
 
 # Method to run the backtest with custom parameters
-def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
+def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
     # Create Cerebro engine
     cerebro = bt.Cerebro()
 
     # Fetch data from Yahoo Finance using yfinance
-    data = yf.download(symbol, start=start_date, end=end_date)
+    data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
 
     # Save data to a CSV file
     csv_filename = f"{symbol}_data.csv"
@@ -126,33 +126,37 @@ def run_backtest(symbol, start_date, end_date, stop_loss, take_profit, trailing_
     final_portfolio_value = cerebro.broker.getvalue()
     return_percentage = ((final_portfolio_value - initial_portfolio_value) / initial_portfolio_value) * 100
 
-    # Print the final portfolio value and performance metrics
-    print(f"Initial Portfolio Value: {initial_portfolio_value}")
-    print(f"Ending Portfolio Value: {final_portfolio_value:.2f}")
-    print('')
+    # Print performance metrics
+    final_portfolio_value = cerebro.broker.getvalue()
+    return_percentage = ((final_portfolio_value - initial_capital) / initial_capital) * 100
+    print(f"Final Portfolio Value: {final_portfolio_value:.2f}")
     print(f"Return in %: {return_percentage:.2f}%")
+    if sharpe_ratio is not None:
+        print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    else:
+        print("Sharpe Ratio: None")
     print(f"Max Drawdown: {drawdown.max.drawdown:.2f}%")
-    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
-    print('')
+    print()
 
     # Plot the results
     cerebro.plot()
 
 # Example usage of the method with custom parameters
-symbol = "^GSPC" # ^GSPC, CDR.WA
-start_date = "1960-01-01"
-end_date = datetime.datetime.today().strftime('%Y-%m-%d')
+symbol = "AAPL"  
+start_date = "2023-01-21"
+end_date = "2025-01-23"
+interval = "1d" 
 
-# Call the backtest method with parameters
 run_backtest(
     symbol=symbol,
     start_date=start_date,
     end_date=end_date,
-    stop_loss=0, 
-    take_profit=0,      
-    trailing_stop=0,    
+    interval=interval,
+    stop_loss=0.02,
+    take_profit=0.05,
+    trailing_stop=0.02,
     initial_capital=100000,
-    slippage=0.002,        # 0.2% slippage
-    commission=0.004,      # 0.4% commission
-    percents=10            # 10% of capital per position
+    slippage=0.002,  # 0.2% slippage
+    commission=0.004,  # 0.4% commission
+    percents=10  # Max 10% of capital per trade
 )
