@@ -29,6 +29,7 @@ class TrendFollowing(bt.Strategy):
                 self.rsi[0] > 50 and 
                 self.atr[0] > self.atr_rolling_mean[0] and 
                 not self.position):
+                print(f"Buy signal at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.buy()  # Place a buy order
                 self.entry_price = self.data.close[0]  # Record the entry price
 
@@ -37,6 +38,7 @@ class TrendFollowing(bt.Strategy):
                   self.rsi[0] < 50 and 
                   self.atr[0] > self.atr_rolling_mean[0] and 
                   self.position):
+                print(f"Sell signal at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.sell()  # Place a sell order
 
         # Implement stop loss
@@ -82,6 +84,9 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit,
 
     # Fetch data from Yahoo Finance using yfinance
     data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+
+    # Print the number of observations in the dataset
+    print(f"Number of observations in the dataset: {len(data)}")
 
     # Save data to a CSV file
     csv_filename = f"{symbol}_data.csv"
@@ -152,9 +157,9 @@ run_backtest(
     start_date=start_date,
     end_date=end_date,
     interval=interval,
-    stop_loss=0.02,
-    take_profit=0.05,
-    trailing_stop=0.02,
+    stop_loss=0,
+    take_profit=0,
+    trailing_stop=0,
     initial_capital=100000,
     slippage=0.002,  # 0.2% slippage
     commission=0.004,  # 0.4% commission
