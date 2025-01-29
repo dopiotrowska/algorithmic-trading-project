@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import yfinance as yf
 import datetime
+import pandas as pd
 
 
 class TrendFollowingWithRF(bt.Strategy):
@@ -85,7 +86,6 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.rf_model.fit(X, y)
                 prediction = self.rf_model.predict([signal_values])[0]
 
-
                 # Act based on the prediction
                 if prediction == 1 and not self.position:
                     self.buy_signal()
@@ -98,7 +98,7 @@ class TrendFollowingWithRF(bt.Strategy):
                     self.close()
                     self.sell_signal()
 
-                    # Check stop-loss
+        # Check stop-loss
         if self.position:
             self.check_stop_loss()
 
@@ -120,7 +120,6 @@ class TrendFollowingWithRF(bt.Strategy):
                 print(f"Stop Loss triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.close()
 
-
         if self.take_profit != 0:
             take_profit_price = self.entry_price * (1 + self.take_profit if self.position.size > 0 else 1 - self.take_profit)
             if (self.position.size > 0 and self.data.close[0] > take_profit_price) or \
@@ -137,25 +136,29 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.close()
 
 
-def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit, trailing_stop, initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
+def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, csv_path='', separator=',', initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
     # Create Cerebro engine
     cerebro = bt.Cerebro()
 
     try:
-        # Fetch data from Yahoo Finance using yfinance
-        data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
+        if csv_path:
+            data = pd.read_csv(csv_path, index_col='Date', parse_dates=True, sep=separator)
+            data.rename(columns={'Min': 'Low', 'Max': 'High'}, inplace=True)
+            print(f"Data loaded from {csv_path}")
+        elif symbol and start_date and end_date and interval:
+            # Fetch data from Yahoo Finance using yfinance
+            data = yf.download(symbol, start=start_date, end=end_date, interval=interval)
 
-        # Check if data is empty
-        if data.empty:
-            print(f"No data downloaded for {symbol} from {start_date} to {end_date} with interval {interval}")
+            # Check if data is empty
+            if data.empty:
+                print(f"No data downloaded for {symbol} from {start_date} to {end_date} with interval {interval}")
+                return
+        else:
+            print("Either provide a CSV path or Yahoo Finance parameters (symbol, start_date, end_date, interval).")
             return
 
         # Print the number of observations in the dataset
         print(f"Number of observations in the dataset: {len(data)}")
-
-        # Save data to a CSV file (optional)
-        csv_filename = f"{symbol}_data.csv"
-        data.to_csv(csv_filename)
 
         # Load the CSV file into Backtrader
         data_feed = bt.feeds.PandasData(dataname=data)
@@ -164,7 +167,7 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit,
         cerebro.adddata(data_feed)
 
     except Exception as e:
-        print(f"Error downloading data: {e}")
+        print(f"Error loading data: {e}")
         return
 
     # Set initial capital
@@ -217,19 +220,18 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss, take_profit,
     cerebro.plot()
 
 # Example usage
-symbol = "AAPL"  
-start_date = "2025-01-21"
-end_date = "2025-01-23"
-interval = "1m" 
+# symbol = "AAPL"  
+# start_date = "2024-01-21"
+# end_date = "2025-01-23"
+# interval = "1d" 
+csv_path = "/Users/dominikapiotrowska/Desktop/Studies/Semester3/AlgorithmicTrading/algorithmic-trading-project/Project2/data/zw=f_copper.csv"  # Provide path to CSV file if available, otherwise leave empty
 
 run_backtest(
-    symbol=symbol,
-    start_date=start_date,
-    end_date=end_date,
-    interval=interval,
     stop_loss=0.02,
     take_profit=0.05,
     trailing_stop=0.02,
+    csv_path=csv_path,
+    separator=';',
     initial_capital=100000,
     slippage=0.002,  # 0.2% slippage
     commission=0.004,  # 0.4% commission
