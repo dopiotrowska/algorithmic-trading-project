@@ -136,7 +136,7 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.close()
 
 
-def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, csv_path='', separator=',', initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
+def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, csv_path='', separator=',', initial_capital=100000, slippage=0.002, commission=0.004):
 
     cerebro = bt.Cerebro()
 
@@ -176,9 +176,6 @@ def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, sto
     # Set commission and slippage
     cerebro.broker.setcommission(commission=commission)
     cerebro.broker.set_slippage_perc(slippage)
-
-    # Add position sizer (e.g., percents% of available capital per trade)
-    cerebro.addsizer(bt.sizers.PercentSizer, percents=percents)
 
     # Print the starting portfolio value
     print(f"Starting Portfolio Value: {cerebro.broker.getvalue()}")
@@ -236,16 +233,15 @@ def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, sto
 # start_date = "2024-01-21"
 # end_date = "2025-01-23"
 # interval = "1d" 
-csv_path = "Project2/data/btc_v_w.csv"
+csv_path = "Project2/data/zw=f_copper.csv"
 
 run_backtest(
     stop_loss=0.02,
     take_profit=0.05,
     trailing_stop=0.02,
     csv_path=csv_path,
-    separator=',',
+    separator=';',
     initial_capital=100000,
     slippage=0.002,  # 0.2% slippage
-    commission=0.004,  # 0.4% commission
-    percents=10  # Max 10% of capital per trade
+    commission=0.004  # 0.4% commission
 )
