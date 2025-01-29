@@ -1,0 +1,6 @@
+filename,return_percentage,max_drawdown_percentage,sharpe_ratio
+btc_v_w.csv,158.4,8.46,0.51
+ge_us_m.csv,70.49,5.66,-1.25
+usdjpy_w.csv,2.88,2.3,-6.64
+wig20_w.csv,30.41,2.87,-0.8
+zw=f_copper.csv,28.07,11.59,-0.7
