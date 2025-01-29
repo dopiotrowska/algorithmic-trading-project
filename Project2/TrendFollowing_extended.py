@@ -26,7 +26,7 @@ class TrendFollowingWithRF(bt.Strategy):
     def __init__(self, macd_fast_period=12, macd_slow_period=26, macd_signal_period=9,
                  rsi_period=14, atr_period=14, stop_loss=0.02, take_profit=0.05,
                  trailing_stop=0.02, signal_window=25, prediction_window=10):
-        # Initialize parameters
+
         self.macd_fast_period = macd_fast_period
         self.macd_slow_period = macd_slow_period
         self.macd_signal_period = macd_signal_period
@@ -51,12 +51,12 @@ class TrendFollowingWithRF(bt.Strategy):
         self.obv = OBV(self.data)
 
         # Random Forest Model
-        # self.rf_model = RandomForestClassifier(
-        #     n_estimators=500, 
-        #     max_depth=10, 
-        #     min_samples_leaf=5, 
-        #     random_state=42
-        # )
+        self.rf_model = RandomForestClassifier(
+            n_estimators=500, 
+            max_depth=10, 
+            min_samples_leaf=5, 
+            random_state=42
+        )
 
         # Data collection for model training
         self.features = []  # Features (signals)
@@ -105,14 +105,16 @@ class TrendFollowingWithRF(bt.Strategy):
             y = np.array(self.target[-self.signal_window:])
             if len(set(y)) > 1:  # Ensure variability in target
 
-                param_grid = {
-                   'n_estimators': [100, 200, 500],
-                   'max_depth': [5, 10, 15],
-                   'min_samples_leaf': [3, 5, 7]
-                }
-                grid_search = GridSearchCV(RandomForestClassifier(), param_grid, cv=3)
-                grid_search.fit(X, y)
-                self.rf_model = grid_search.best_estimator_
+                # param_grid = {
+                #    'n_estimators': [100, 200, 500],
+                #    'max_depth': [5, 10, 15],
+                #    'min_samples_leaf': [3, 5, 7]
+                # }
+                # grid_search = GridSearchCV(RandomForestClassifier(), param_grid, cv=3)
+                # grid_search.fit(X, y)
+                
+                self.rf_model.fit(X, y)
+                
                 prediction = self.rf_model.predict([signal_values])[0]
 
                 # Act based on the prediction
@@ -140,8 +142,6 @@ class TrendFollowingWithRF(bt.Strategy):
     #     print(f"Sell signal at {self.data.datetime.datetime()}")
     #     self.sell(size=1)
     #     self.entry_price = self.data.close[0]
-
-
 
     def buy_signal(self):
        size = self.broker.get_cash() * 0.1 / self.data.close[0]  # 10% of capital per trade
@@ -181,8 +181,8 @@ class TrendFollowingWithRF(bt.Strategy):
                 self.close()
 
 
-def run_backtest(symbol, start_date, end_date, interval, stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, csv_path='', separator=',', initial_capital=100000, slippage=0.002, commission=0.004, percents=10):
-    # Create Cerebro engine
+def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, csv_path='', separator=',', initial_capital=100000, slippage=0.002, commission=0.004):
+
     cerebro = bt.Cerebro()
 
     try:
@@ -205,7 +205,7 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss=0.02, take_pr
         # Print the number of observations in the dataset
         print(f"Number of observations in the dataset: {len(data)}")
 
-        # Load the CSV file into Backtrader
+        # Load data into Backtrader
         data_feed = bt.feeds.PandasData(dataname=data)
 
         # Add the data to the Cerebro engine
@@ -221,9 +221,6 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss=0.02, take_pr
     # Set commission and slippage
     cerebro.broker.setcommission(commission=commission)
     cerebro.broker.set_slippage_perc(slippage)
-
-    # Add position sizer (e.g., percents% of available capital per trade)
-    cerebro.addsizer(bt.sizers.PercentSizer, percents=percents)
 
     # Print the starting portfolio value
     print(f"Starting Portfolio Value: {cerebro.broker.getvalue()}")
@@ -251,15 +248,27 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss=0.02, take_pr
 
     # Print performance metrics
     final_portfolio_value = cerebro.broker.getvalue()
-    return_percentage = ((final_portfolio_value - initial_capital) / initial_capital) * 100
+    return_percentage = round(((final_portfolio_value - initial_capital) / initial_capital) * 100, 2)
     print(f"Final Portfolio Value: {final_portfolio_value:.2f}")
     print(f"Return in %: {return_percentage:.2f}%")
     if sharpe_ratio is not None:
+        sharpe_ratio = round(sharpe_ratio, 2)
         print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
     else:
         print("Sharpe Ratio: None")
-    print(f"Max Drawdown: {drawdown.max.drawdown:.2f}%")
+    max_drawdown = round(drawdown.max.drawdown, 2)
+    print(f"Max Drawdown: {max_drawdown:.2f}%")
     print()
+
+    # Append results to CSV
+    results_data = {
+        'filename': csv_path.split('/')[-1] if csv_path else f"{symbol}_{start_date}_{end_date}",
+        'return_percentage': return_percentage,
+        'max_drawdown_percentage': max_drawdown,
+        'sharpe_ratio': sharpe_ratio if sharpe_ratio is not None else 'None'
+    }
+    results_df = pd.DataFrame([results_data])
+    results_df.to_csv('Project2/results2.csv', mode='a', header=False, index=False)
 
     # Plot the results
     cerebro.plot()
@@ -269,20 +278,19 @@ def run_backtest(symbol, start_date, end_date, interval, stop_loss=0.02, take_pr
 # start_date = "2024-01-21"
 # end_date = "2025-01-23"
 # interval = "1d" 
-csv_path = "/Users/dominikapiotrowska/Desktop/Studies/Semester3/AlgorithmicTrading/algorithmic-trading-project/Project2/data/zw=f_copper.csv"  # Provide path to CSV file if available, otherwise leave empty
+csv_path = "Project2/data/zw=f_copper.csv"
 
 run_backtest(
     # symbol=symbol,
     # start_date=start_date,
     # end_date=end_date,
     # interval=interval,
-    stop_loss=0.02,
-    take_profit=0.05,
-    trailing_stop=0.02,
+    stop_loss=0.05,
+    take_profit=0.1,
+    trailing_stop=0.05,
     csv_path=csv_path,
     separator=';',
     initial_capital=100000,
     slippage=0.002,  # 0.2% slippage
-    commission=0.004,  # 0.4% commission
-    percents=10  # Max 10% of capital per trade
+    commission=0.004  # 0.4% commission
 )
