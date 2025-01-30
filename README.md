@@ -1,1 +1,0 @@
-# algorithmic-trading-project
