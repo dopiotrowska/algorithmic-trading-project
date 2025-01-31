@@ -8,8 +8,8 @@ In our first project, we developed three strategies based on technical analysis 
 ## Strategies recap 
 **Trend-Reversal Strategy**
 The trend reversal strategy identifies potential market turning points by analyzing divergences in price and momentum (MACD), overbought or oversold conditions (RSI), and market volatility (VIX).
-1.	A Buy Signal is generated when RSI is below 30 (oversold), MACD shows bullish divergence (momentum rising while price is falling), and VIX is higher than its rolling average.
-2.	A Sell Signal occurs when RSI exceeds 70 (overbought), MACD shows bearish divergence (momentum falling while price is rising), and VIX is below its rolling average.
+1.	A Buy signal is generated when RSI is below 30 (oversold), MACD shows bullish divergence (momentum rising while price is falling), and VIX is higher than its rolling average.
+2.	A Sell signal occurs when RSI exceeds 70 (overbought), MACD shows bearish divergence (momentum falling while price is rising), and VIX is below its rolling average.
 The economic reasoning for this strategy includes:
 
 •	RSI identifies overbought or oversold market conditions, often leading to reversals.
@@ -20,8 +20,8 @@ The economic reasoning for this strategy includes:
 
 **Trend-Following Strategy**
 This strategy identifies buying and selling opportunities by using three key indicators: MACD, RSI, and ATR.
-1.	A Buy Signal is triggered when the MACD is bullish (above the Signal Line), RSI is above 50, and ATR is higher than its 30-day rolling average.
-2.	A Sell Signal occurs when the MACD is bearish (below the Signal Line), RSI is below 50, and ATR is still above the rolling average.
+1.	A Buy signal is triggered when the MACD is bullish (above the signal line), RSI is above 50, and ATR is higher than its 30-day rolling average.
+2.	A Sell signal occurs when the MACD is bearish (below the signal line), RSI is below 50, and ATR is still above the rolling average.
 The economic reasoning behind this strategy lies in the role of each indicator:
 
 •	MACD highlights the momentum and direction of the trend. When MACD crosses above the Signal Line, it suggests buying pressure; when it crosses below, it indicates selling pressure.
