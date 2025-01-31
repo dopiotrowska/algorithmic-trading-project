@@ -1,6 +1,6 @@
 # Project 2 - Summary
 
-## Itinial idea
+## Initial idea
 
 In our first project, we developed three strategies based on technical analysis and one based on fundamental analysis. For this project, we decided to focus on two strategies—Trend-Following and Trend-Reversal. We used Random Forest to enhance both strategies by making predictions based on technical indicators. However, due to challenges aligning the VIX with random time series in the Trend-Reversal strategy, we decided to concentrate on further enhancing the Trend-Following strategy.
 
