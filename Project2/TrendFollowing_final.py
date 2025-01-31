@@ -133,15 +133,6 @@ class TrendFollowingWithRF(bt.Strategy):
         if self.position:
             self.check_stop_loss()
 
-    # def buy_signal(self):
-    #     print(f"Buy signal at {self.data.datetime.datetime()}")
-    #     self.buy(size=1)
-    #     self.entry_price = self.data.close[0]
-
-    # def sell_signal(self):
-    #     print(f"Sell signal at {self.data.datetime.datetime()}")
-    #     self.sell(size=1)
-    #     self.entry_price = self.data.close[0]
 
     def buy_signal(self):
        size = self.broker.get_cash() * 0.1 / self.data.close[0]  # 10% of capital per trade
