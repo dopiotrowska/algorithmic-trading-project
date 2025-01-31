@@ -72,11 +72,18 @@ The final strategy builds on the foundational indicators we used in earlier proj
 
 
 **Random Forest integration.**
-It predicts future market movements based on the combined signals from all the selected indicators. Instead of relying solely on fixed rule-based conditions, the model learns patterns from historical data to determine whether a buy or sell signal should be triggered.
+It predicts future market movements based on the combined signals from all the selected indicators. Instead of relying solely on fixed rule-based conditions, the model learns patterns from historical data to determine signal:.
+
+•  Buy: If the price is expected to increase by more than 5%.
+
+•  Sell: If the price is expected to decrease by more than 10%.
+
+•  Hold: If no significant movement is expected.
 
 The model works by aggregating signals from MACD, RSI, ATR, ADX, and OBV into a structured feature set. The target variable is defined based on future price changes, classifying whether the price will increase, decrease, or stay neutral. The model is trained on a rolling window of 25 recent observations, continuously adjusting to the latest market dynamics. 
 
-Additional risk-management mechanism is applied to enhance trade execution. A stop-loss at 5% ensures losses are minimized if the trade moves unfavorably, while a take-profit at 10% locks in gains before potential reversals. These mechanisms operate independently of the model's predictions, ensuring trades are automatically closed at predefined levels to protect against excessive losses and secure profits.
+Additional risk-management mechanism is applied to enhance trade execution like stop loss or take profit. These mechanisms operate independently of the model's predictions, ensuring trades are automatically closed at predefined levels to protect against excessive losses and secure profits.
+
 
 ## Results
 
