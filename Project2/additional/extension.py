@@ -12,7 +12,7 @@ import datetime
 
 class TrendFollowingWithRF(bt.Strategy):
     def __init__(self, macd_fast_period=12, macd_slow_period=26, macd_signal_period=9,
-                 rsi_period=14, atr_period=14, stochastic_period=14, bollinger_period=20,
+                 rsi_period=14, atr_period=14, stochastic_period=14, bollinger_period=20, 
                  stop_loss=0.02, take_profit=0.05, trailing_stop=0.02, signal_window=25, prediction_window=10):
 
         self.macd_fast_period = macd_fast_period
@@ -36,6 +36,7 @@ class TrendFollowingWithRF(bt.Strategy):
         self.atr_rolling_mean = bt.indicators.SimpleMovingAverage(self.atr, period=30)
         self.stochastic = bt.indicators.Stochastic(self.data, period=self.stochastic_period)
         self.bollinger = bt.indicators.BollingerBands(self.data.close, period=self.bollinger_period)
+        # self.adx = bt.indicators.ADX(self.data, period=14)
 
         # **Random Forest Model**
         self.rf_model = RandomForestClassifier(
@@ -74,16 +75,19 @@ class TrendFollowingWithRF(bt.Strategy):
         atr_signal = 1 if self.atr[0] > self.atr_rolling_mean[0] else 0
         stochastic_signal = 1 if self.stochastic.percK[0] > self.stochastic.percD[0] else -1
         bollinger_signal = 1 if self.data.close[0] > self.bollinger.lines.bot[0] else -1 if self.data.close[0] < self.bollinger.lines.top[0] else 0
+        # adx_signal = 1 if self.adx[0] > 25 else 0
+
+       
 
         # **Combine Signals**
-        signal_values = [macd_signal, rsi_signal, atr_signal, stochastic_signal, bollinger_signal]
+        signal_values = [macd_signal, rsi_signal, atr_signal, stochastic_signal, bollinger_signal]    #adx_signal
         self.features.append(signal_values)
 
         # **Generate Target**
         pct_change = (self.data.close[self.prediction_window] - self.data.close[0]) / self.data.close[0]
-        if pct_change > 0.01:
+        if pct_change > 0.05:
             self.target.append(1)  # Buy signal
-        elif pct_change < -0.05:
+        elif pct_change < -0.1:
             self.target.append(-1)  # Sell signal
         else:
             self.target.append(0)  # No signal
@@ -135,12 +139,31 @@ class TrendFollowingWithRF(bt.Strategy):
                 print(f"Stop Loss triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
                 self.close()
 
-    def feature_importance(self):
-        importance = self.rf_model.feature_importances_
-        feature_names = ["MACD", "RSI", "ATR", "Stochastic", "Bollinger"]
-        importance_dict = {feature_names[i]: importance[i] for i in range(len(feature_names))}
-        sorted_importance = dict(sorted(importance_dict.items(), key=lambda item: item[1], reverse=True))
-        print("Feature Importance:", sorted_importance)
+
+        if self.take_profit != 0:
+            take_profit_price = self.entry_price * (1 + self.take_profit if self.position.size > 0 else 1 - self.take_profit)
+            if (self.position.size > 0 and self.data.close[0] > take_profit_price) or \
+               (self.position.size < 0 and self.data.close[0] < take_profit_price):
+                print(f"Take Profit triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
+                self.close()
+
+        
+        if self.trailing_stop != 0:
+            trailing_stop_price = self.entry_price * (1 - self.trailing_stop if self.position.size > 0 else 1 + self.trailing_stop)
+            if (self.position.size > 0 and self.data.close[0] < trailing_stop_price) or \
+               (self.position.size < 0 and self.data.close[0] > trailing_stop_price):
+                print(f"Trailing Stop triggered at {self.data.datetime.datetime()} for price {self.data.close[0]:.2f}")
+                self.close()
+
+
+
+    # def feature_importance(self):
+    #     importance = self.rf_model.feature_importances_
+    #     feature_names = ["MACD", "RSI", "ATR", "Stochastic", "Bollinger"]
+    #     importance_dict = {feature_names[i]: importance[i] for i in range(len(feature_names))}
+    #     sorted_importance = dict(sorted(importance_dict.items(), key=lambda item: item[1], reverse=True))
+    #     print("Feature Importance:", sorted_importance)
+
 
 
 # **Run Backtest**
@@ -191,6 +214,7 @@ def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, sto
     # Run the backtest
     results = cerebro.run()
 
+
     # Extract analyzers results
     sharpe_ratio = results[0].analyzers.sharperatio.get_analysis().get('sharperatio', None)
     drawdown = results[0].analyzers.drawdown.get_analysis()
@@ -217,7 +241,7 @@ def run_backtest(symbol=None, start_date=None, end_date=None, interval=None, sto
         'sharpe_ratio': sharpe_ratio if sharpe_ratio is not None else 'None'
     }
     results_df = pd.DataFrame([results_data])
-    results_df.to_csv('Project2/results2.csv', mode='a', header=False, index=False)
+    results_df.to_csv('Project2/results4.csv', mode='a', header=False, index=False)
 
     # Plot the results
     cerebro.plot()
